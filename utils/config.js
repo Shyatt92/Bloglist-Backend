@@ -6,7 +6,7 @@ const mongoOptions = {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   useFindAndModify: false,
-  UseCreateIndex: true
+  useCreateIndex: true
 }
 
 module.exports = {
