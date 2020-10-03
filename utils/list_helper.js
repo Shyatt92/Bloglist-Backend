@@ -27,7 +27,7 @@ const favoriteBlog = blogs => {
 }
 
 const mostBlogs = blogs => {
-  let authors = [];
+  let authors = []
 
   blogs.forEach(blog => {
     let authorIndex = authors.findIndex(element => element.author === blog.author)
@@ -54,10 +54,39 @@ const mostBlogs = blogs => {
   return authors[mostBlogged]
 }
 
+const mostLikes = blogs => {
+  let authors = []
+
+  blogs.forEach(blog => {
+    let authorIndex = authors.findIndex(element => element.author === blog.author)
+    if(authorIndex === -1) {
+      authors.push({
+        author: blog.author,
+        likes: blog.likes
+      })
+    } else {
+      authors[authorIndex].likes += blog.likes
+    }
+  })
+
+  let mostLikes = 0
+  let mostLiked
+
+  authors.forEach((author, authorIndex) => {
+    if(author.likes > mostLikes) {
+      mostLikes = author.likes
+      mostLiked = authorIndex
+    }
+  })
+
+  return authors[mostLiked]
+}
+
 
 module.exports = {
   dummy,
   totalLikes,
   favoriteBlog,
-  mostBlogs
+  mostBlogs,
+  mostLikes
 }
