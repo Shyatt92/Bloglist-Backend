@@ -1,5 +1,6 @@
 const Blog = require('../models/blog')
-const user = require('../models/user')
+const User = require('../models/user')
+const bcrypt = require('bcrypt')
 
 const initialBlogs = [
   {
@@ -52,18 +53,52 @@ const initialBlogs = [
   }
 ]
 
+const databaseSeed = async () => {
+  await User.deleteMany({})
+
+  const passwordHash = await bcrypt.hash('sekret', 10)
+  const user = new User({
+    username: 'root',
+    name: 'Superuser',
+    passwordHash,
+    blogs: []
+  })
+  
+  const savedUser = await user.save()
+  
+  await Blog.deleteMany({})
+
+  for (let blog of initialBlogs) {
+    let blogObject = new Blog({
+      _id: blog._id,
+      title: blog.title,
+      author: blog.author,
+      url: blog.url,
+      likes: blog.likes,
+      __v: blog.__v,
+      user: savedUser._id
+    })
+
+    const savedBlog = await blogObject.save()
+    savedUser.blogs = savedUser.blogs.concat(savedBlog._id)
+    await savedUser.save()
+  }
+  return
+}
+
 const blogsInDb = async () => {
   const blogs = await Blog.find({})
   return blogs.map(blog => blog.toJSON())
 }
 
 const usersInDb = async () => {
-  const users = await user.find({})
+  const users = await User.find({})
   return users.map(u => u.toJSON())
 }
 
 module.exports = {
   initialBlogs,
   blogsInDb,
-  usersInDb
+  usersInDb,
+  databaseSeed
 }
