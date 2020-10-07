@@ -7,7 +7,7 @@ const User = require('../models/user')
 const helper = require('./test_helper')
 const api = supertest(app)
 
-beforeEach(async () => {
+beforeAll(async () => {
   await helper.databaseSeed()
 })
 
@@ -171,13 +171,11 @@ describe('HTTP POST requests', () => {
       .post('/api/login')
       .send(user)
       .expect(200)
-    
-    console.log('LOGIN TOKEN', login.token)
-    
-    const response = await api
+
+    await api
       .post('/api/blogs')
       .send(newBlog)
-      .set({ Authorization: `bearer ${login.token}` })
+      .set({ authorization: `bearer ${login.body.token}` })
       .expect(201)
       .expect('Content-Type', /application\/json/)
     
@@ -189,15 +187,26 @@ describe('HTTP POST requests', () => {
   })
 
   test('defaults the value of likes to zero when omitted', async () => {
+    const user = {
+      username: 'root',
+      password: 'sekret'
+    }
+    
     const newBlog = {
       title: 'Steve\'s Second Blog',
       author: 'Steve Hyatt',
       url: 'secondblog.steve.hyatt',
     }
 
+    const login = await api
+      .post('/api/login')
+      .send(user)
+      .expect(200)
+
     const response = await api
       .post('/api/blogs')
       .send(newBlog)
+      .set({ authorization: `bearer ${login.body.token}` })
       .expect(201)
       .expect('Content-Type', /application\/json/)
 
@@ -205,19 +214,52 @@ describe('HTTP POST requests', () => {
   })
 
   test('without required fields is not added', async () => {
+    const blogsAtStart = await helper.blogsInDb()
+    
+    const user = {
+      username: 'root',
+      password: 'sekret'
+    }
+    
     const newBlog = {
       author: 'Steve Hyatt',
       likes: 4
     }
 
-    const response = await api
+    const login = await api
+      .post('/api/login')
+      .send(user)
+      .expect(200)
+
+    await api
       .post('/api/blogs')
       .send(newBlog)
+      .set({ authorization: `bearer ${login.body.token}` })
       .expect(400)
     
     const blogsAtEnd = await helper.blogsInDb()
 
-    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
+    expect(blogsAtEnd).toHaveLength(blogsAtStart.length)
+  })
+
+  test('without required authorization token fails with 401 status code', async () => {
+    const blogsAtStart = await helper.blogsInDb()
+
+    const newBlog = {
+      title: 'Steve\'s Third Blog',
+      author: 'Steve Hyatt',
+      url: 'thirdblog.steve.hyatt',
+      likes: 40
+    }
+
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(401)
+
+    const blogsAtEnd = await helper.blogsInDb()
+
+    expect(blogsAtEnd).toHaveLength(blogsAtStart.length)
   })
 })
 
@@ -226,13 +268,24 @@ describe('HTTP DELETE requests', () => {
     const blogsAtStart = await helper.blogsInDb()
     const blogToDelete = blogsAtStart[0]
 
-    await api
+    const user = {
+      username: 'root',
+      password: 'sekret'
+    }
+
+    const login = await api
+      .post('/api/login')
+      .send(user)
+      .expect(200)
+
+    const response = await api
       .delete(`/api/blogs/${blogToDelete.id}`)
+      .set({ authorization: `bearer ${login.body.token} `})
       .expect(204)
 
     const blogsAtEnd = await helper.blogsInDb()
 
-    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length - 1)
+    expect(blogsAtEnd).toHaveLength(blogsAtStart.length - 1)
 
     const titles = blogsAtEnd.map(r => r.title)
     expect(titles).not.toContain(blogToDelete.title)
@@ -245,11 +298,12 @@ describe('HTTP PUT requests', () => {
     const blogToUpdate = blogsAtStart[0]
 
     const newBlog = {
-      id: "5a422a851b54a676234d17f7",
-      title: "React patterns",
-      author: "Michael Chan",
-      url: "https://reactpatterns.com/",
-      likes: 27
+      id: blogToUpdate.id,
+      title: blogToUpdate.title,
+      author: blogToUpdate.author,
+      url: blogToUpdate.url,
+      likes: 1000000,
+      user: blogToUpdate.user.toString()
     }
 
     const result = await api
@@ -258,7 +312,7 @@ describe('HTTP PUT requests', () => {
       .expect(200)
     
     const blogsAtEnd = await helper.blogsInDb()
-    expect(blogsAtEnd[0].likes).toBe(27)
+    expect(blogsAtEnd[0].likes).toBe(1000000)
     expect(result.body).toEqual(newBlog)
   })
 })

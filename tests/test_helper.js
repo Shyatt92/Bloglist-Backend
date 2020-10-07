@@ -68,8 +68,8 @@ const databaseSeed = async () => {
   
   await Blog.deleteMany({})
 
-  for (let blog of initialBlogs) {
-    let blogObject = new Blog({
+  const blogObjects = initialBlogs
+    .map(blog => new Blog({
       _id: blog._id,
       title: blog.title,
       author: blog.author,
@@ -77,12 +77,14 @@ const databaseSeed = async () => {
       likes: blog.likes,
       __v: blog.__v,
       user: savedUser._id
-    })
+    }))
+  const promiseArray = blogObjects.map(blog => blog.save())
+  await Promise.all(promiseArray)
 
-    const savedBlog = await blogObject.save()
-    savedUser.blogs = savedUser.blogs.concat(savedBlog._id)
-    await savedUser.save()
-  }
+  const savedBlogs = await Blog.find({})
+  savedUser.blogs = savedUser.blogs.concat(savedBlogs.map(blog => blog._id))
+  await savedUser.save()
+  
   return
 }
 

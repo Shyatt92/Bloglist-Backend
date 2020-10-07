@@ -32,11 +32,7 @@ blogsRouter.post('/', async (request, response) => {
   user.blogs = user.blogs.concat(savedBlog._id)
   await user.save()
   
-  if (savedBlog) {
-    response.status(201).json(savedBlog)
-  } else {
-    response.status(400).end()
-  }
+  response.status(201).json(savedBlog.toJSON())
 })
 
 blogsRouter.put('/:blogId', async (request, response) => {
@@ -60,14 +56,14 @@ blogsRouter.delete('/:blogId', async (request, response) => {
 
   const blog = await Blog.findById(request.params.blogId)
 
-  if (blog.user.id !== decodedToken.id) {
+  if (blog.user.toString() !== decodedToken.id) {
     return response.status(401).json({ error: 'not authorized' })
   }
 
-  await Blog.removeOne({ _id: blog.id })
+  await Blog.findByIdAndRemove(request.params.blogId)
   const user = await User.findById(decodedToken.id)
 
-  user.blogs = user.blogs.filter(b => b !== blog.id)
+  user.blogs = user.blogs.filter(b => b !== request.params.blogId)
   await user.save()
 
   response.status(204).end()
